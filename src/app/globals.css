@@ -481,7 +481,6 @@ dialog::backdrop { background: rgba(44,27,30,.48); animation: backdrop-appear 18
   .policy-content { padding: 28px 18px 24px; }
   .policy-content h2 { font-size: 28px; }
 }
-}
 
 @media (max-width: 365px) {
   .page-width { width: calc(100% - 30px); }
