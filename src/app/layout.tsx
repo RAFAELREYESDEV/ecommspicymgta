@@ -17,8 +17,8 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
-  const configuredPixel = process.env.NEXT_PUBLIC_META_PIXEL_ID;
-  const pixelId = configuredPixel && /^\d+$/.test(configuredPixel) ? configuredPixel : null;
+  const configuredPixel = process.env.NEXT_PUBLIC_META_PIXEL_ID || "2045055106181681";
+  const pixelId = configuredPixel && /^\d+$/.test(configuredPixel) ? configuredPixel : "2045055106181681";
 
   return (
     <html lang="es-VE">
