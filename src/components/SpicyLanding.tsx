@@ -358,9 +358,9 @@ export default function SpicyLanding() {
                 </div>
               </fieldset>
 
-              <p className="pack-context" aria-live="polite"><Icon name={selected.shipping ? "truck" : "gift"} />{bundleId === "popular" ? "Tu tercera bolsita es gratis. Ahorras $12 + el envío." : bundleId === "escapada" ? "Lleva 5 y paga solo 3. Envío VIP incluido." : `Una cita para probar. Total con envío: ${money(total)}.`}</p>
+              <p className="pack-context" aria-live="polite"><Icon name={selected.hasFreeShipping ? "gift" : "truck"} />{bundleId === "popular" ? "Tu tercera bolsita es gratis. Ahorras $12 + Envío 100% GRATIS." : bundleId === "escapada" ? "Lleva 5 y paga solo 3. Envío VIP 100% GRATIS." : "Combo de 1 bolsita para probar. Envío NO incluido (flete cobro a destino al recibir)."}</p>
               <div className="purchase-actions" ref={purchaseRef}>
-                <button className="button-primary buy-button" onClick={openCheckout}><Icon name="bag" /><span>Pedir ahora · {money(total)}</span><Icon name="arrow" /></button>
+                <button className="button-primary buy-button" onClick={openCheckout}><Icon name="bag" /><span>Pedir ahora · {money(total)}{!selected.hasFreeShipping ? " + flete" : ""}</span><Icon name="arrow" /></button>
                 <p className="payment-reassurance"><Icon name="lock" /> Pagas al recibir. Sin adelantos, sin sorpresas.</p>
               </div>
               <div className="delivery-benefits"><span><Icon name="truck" />Envíos a toda Venezuela</span><span><Icon name="box" />Empaque sin logos</span></div>
@@ -481,7 +481,7 @@ export default function SpicyLanding() {
               </div>
             </div>
 
-            <a className="button-primary" href={`${SUPPORT}?text=${encodeURIComponent(`Hola! Acabo de registrar mi pedido #${receipt.id} en la web (${receipt.isExpress ? "Express en Margarita" : "Nacional por Zoom/MRW"}). Combo: ${bagLabel(receiptBundle?.quantity ?? 3)}. Total: ${money(receipt.total)} (${cryptoMoney(cryptoTotal)}). Ya tengo el comprobante de pago.`)}`} target="_blank" rel="noreferrer" style={{ marginTop: "16px" }}>
+            <a className="button-primary" href={`${SUPPORT}?text=${encodeURIComponent(`Hola! Acabo de registrar mi pedido #${receipt.id} en la web (${receipt.isExpress ? "Express en Margarita" : "Nacional por Zoom/MRW"}). Combo: ${bagLabel(receiptBundle?.quantity ?? 3)}. Total: ${money(receipt.total)} (${cryptoMoney(cryptoTotal)}). ${receiptBundle?.hasFreeShipping ? "Envío gratis incluido" : "Envío NO incluido (flete cobro a destino)"}. Ya tengo el comprobante de pago.`)}`} target="_blank" rel="noreferrer" style={{ marginTop: "16px" }}>
               Enviar comprobante por WhatsApp <Icon name="arrow" />
             </a>
             <button className="text-button" onClick={() => { setReceipt(null); setCheckoutOpen(false); }}>Seguir mirando <Icon name="arrow" /></button>
@@ -489,11 +489,11 @@ export default function SpicyLanding() {
             <div className="checkout-heading"><span className="eyebrow">FINALIZA TU COMPRA</span><h2 id="checkout-title">Datos de Entrega & Pago</h2><p>Completa tus datos. Envíos discretos en sobre ciego a toda Venezuela.</p></div>
             <form onSubmit={submitOrder} className="checkout-form">
               <fieldset disabled={loading}>
-                <div className="checkout-product"><Image src={pouch} alt="Bolsita individual Spicy Cubbes" width={80} height={95} sizes="80px" /><div><strong>Spicy Cubbes</strong><span>Durazno & ají · Un par por bolsita</span><label className="sr-only" htmlFor="checkout-pack">Pack seleccionado</label><select id="checkout-pack" value={bundleId} onChange={(event) => selectBundle(event.target.value as BundleId)}>{PRODUCT_BUNDLES.map((item) => <option value={item.id} key={item.id}>{bagLabel(item.quantity)} — {money(item.price)}{item.shipping ? " + $5 envío" : " · Envío gratis"}</option>)}</select></div></div>
+                <div className="checkout-product"><Image src={pouch} alt="Bolsita individual Spicy Cubbes" width={80} height={95} sizes="80px" /><div><strong>Spicy Cubbes</strong><span>Durazno & ají · Un par por bolsita</span><label className="sr-only" htmlFor="checkout-pack">Pack seleccionado</label><select id="checkout-pack" value={bundleId} onChange={(event) => selectBundle(event.target.value as BundleId)}>{PRODUCT_BUNDLES.map((item) => <option value={item.id} key={item.id}>{bagLabel(item.quantity)} — {money(item.price)}{item.hasFreeShipping ? " · Envío 100% GRATIS" : " · Envío NO incluido (Cobro a destino)"}</option>)}</select></div></div>
                 <div className="checkout-totals">
                   <div><span>{bagLabel(selected.quantity)}</span><span>{money(selected.price)}</span></div>
-                  <div><span>Envío{selected.id === "escapada" ? " VIP" : ""}</span><span className={selected.shipping === 0 ? "free-shipping" : ""}>{selected.shipping ? money(selected.shipping) : "Por nuestra cuenta"}</span></div>
-                  <div className="total-line"><strong>Total al recibir</strong><strong>{money(total)} <small>USD</small></strong></div>
+                  <div><span>Envío{selected.id === "escapada" ? " VIP" : ""}</span><span className={selected.hasFreeShipping ? "free-shipping" : ""}>{selected.hasFreeShipping ? "100% GRATIS (Por nuestra cuenta)" : "NO incluido (Cobro a destino)"}</span></div>
+                  <div className="total-line"><strong>Total producto</strong><strong>{money(total)} <small>USD</small></strong></div>
                   <div className="crypto-checkout-note">
                     <span>💵 O paga <strong>{cryptoMoney(selected.cryptoPrice + selected.shipping)}</strong> (15% OFF en USDT o efectivo)</span>
                   </div>
@@ -502,14 +502,14 @@ export default function SpicyLanding() {
                 {/* --- AVISO DE TIEMPO DE ENVIO SEGUN ESTADO --- */}
                 <div className={`shipping-alert ${isMargarita ? "shipping-alert-express" : "shipping-alert-national"}`}>
                   {isMargarita ? (
-                    bundleId === "prueba" ? (
-                      <p>⚡ <b>Envío Express Margarita:</b> Entrega en tu puerta en aprox. <b>1 hora</b> (9am a 7pm). <i>*Para 1 bolsita el costo del motorizado corre por cuenta del cliente al recibir.</i></p>
+                    !selected.hasFreeShipping ? (
+                      <p>⚡ <b>Envío Express Margarita:</b> Entrega en tu puerta en aprox. <b>1 hora</b> (9am a 7pm). <br /><b style={{ color: "#b91c1c" }}>⚠️ Para el combo de $12 el envío NO es gratis:</b> El costo del motorizado corre por cuenta del cliente al recibir.</p>
                     ) : (
                       <p>⚡ <b>Envío Express Margarita:</b> Entrega en tu puerta en aprox. <b>1 hora</b> (9am a 7pm). <b>¡Delivery 100% GRATIS incluido en tu combo!</b></p>
                     )
                   ) : (
-                    bundleId === "prueba" ? (
-                      <p>📦 <b>Envío Nacional por Zoom / MRW:</b> Despacho a oficina o dirección en <b>3 días hábiles</b> con <b>flete Cobro a Destino (COD)</b> pagado por el cliente en agencia.</p>
+                    !selected.hasFreeShipping ? (
+                      <p>📦 <b>Envío Nacional por Zoom / MRW:</b> Despacho a oficina o dirección en <b>3 días hábiles</b>. <br /><b style={{ color: "#b91c1c" }}>⚠️ Para el combo de $12 el envío NO es gratis:</b> Flete Cobro a Destino (COD) pagado por el cliente en la agencia.</p>
                     ) : (
                       <p>📦 <b>Envío Nacional por Zoom / MRW:</b> Despacho en <b>3 días hábiles</b> en sobre 100% sellado y ciego. <b>¡Flete 100% GRATIS cubierto por nosotros!</b></p>
                     )

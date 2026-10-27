@@ -11,6 +11,7 @@ export type ProductBundle = {
   shipping: number;
   offer: string;
   shippingLabel: string;
+  hasFreeShipping: boolean;
 };
 
 export const PRODUCT_BUNDLES: readonly ProductBundle[] = [
@@ -22,9 +23,10 @@ export const PRODUCT_BUNDLES: readonly ProductBundle[] = [
     price: 12,
     cryptoPrice: 10.5, // 15% OFF (queda en 10.50 USDT)
     regularPrice: 12,
-    shipping: 0, // Flete cobro a destino / delivery por cuenta del cliente
+    shipping: 0, // Flete cobro a destino
+    hasFreeShipping: false,
     offer: "Para probar",
-    shippingLabel: "Flete cobro a destino",
+    shippingLabel: "Envío NO incluido (Cobro a destino)",
   },
   {
     id: "popular",
@@ -35,8 +37,9 @@ export const PRODUCT_BUNDLES: readonly ProductBundle[] = [
     cryptoPrice: 20.4, // 15% OFF en 24 USD = 20.40 USDT
     regularPrice: 36,
     shipping: 0,
+    hasFreeShipping: true,
     offer: "2 + 1 gratis",
-    shippingLabel: "Envío gratis incluido",
+    shippingLabel: "Envío 100% GRATIS",
   },
   {
     id: "escapada",
@@ -47,8 +50,9 @@ export const PRODUCT_BUNDLES: readonly ProductBundle[] = [
     cryptoPrice: 30.6, // 15% OFF en 36 USD = 30.60 USDT
     regularPrice: 60,
     shipping: 0,
+    hasFreeShipping: true,
     offer: "Lleva 5, paga 3",
-    shippingLabel: "Envío VIP gratis",
+    shippingLabel: "Envío VIP 100% GRATIS",
   },
 ];
 
