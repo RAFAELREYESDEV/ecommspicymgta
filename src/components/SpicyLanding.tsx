@@ -367,7 +367,7 @@ export default function SpicyLanding() {
 
               <div className="product-details">
                 <details><summary>¿Qué viene en mi bolsita?<span>+</span></summary><p>Un par: exactamente dos cubos, uno para él y uno para ella. Cada bolsita está sellada de forma individual y corresponde a una cita.</p></details>
-                <details><summary>Ingredientes y cuidados<span>+</span></summary><p>Sabor a durazno, capsaicina de ají y una selección botánica con maca, muira puama y epimedium. Consulta el empaque para conocer la composición y las indicaciones.</p><p>Solo para mayores de 18 años. Si tomas medicamentos, tienes alguna condición de salud, estás en embarazo o lactancia, consulta a un profesional antes de consumir. El origen botánico no elimina posibles contraindicaciones.</p></details>
+                <details><summary>Ingredientes y cuidados<span>+</span></summary><p>Sabor a durazno, capsaicina de ají y una fórmula natural con maca, muira puama y epimedium. Consulta el empaque para conocer la composición y las indicaciones.</p><p>Solo para mayores de 18 años. Si tomas medicamentos, tienes alguna condición de salud, estás en embarazo o lactancia, consulta a un profesional antes de consumir. El origen natural no elimina posibles contraindicaciones.</p></details>
               </div>
             </div>
           </div>
@@ -421,7 +421,7 @@ export default function SpicyLanding() {
                 <span className="delivery-photo-tag">📸 Entregas reales · Foto cliente</span>
               </div>
               <p className="parcel-preview-desc">
-                🔒 <b>Privacidad Absoluta:</b> En sobre exterior neutro y ciego. Por dentro recibes tus bolsitas herméticas con los dos cubitos listos para disfrutar.
+                🍬 <b>Cero sospechas:</b> A simple vista parecen unas gomitas dulces normales. Recibes tus bolsitas herméticas individuales con los dos cubitos listos para llevar contigo sin llamar la atención de nadie.
               </p>
             </div>
 
