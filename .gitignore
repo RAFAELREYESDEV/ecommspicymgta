@@ -40,3 +40,6 @@ next-env.d.ts
 
 # data (local orders)
 /data
+
+# generated
+AGENTS.md

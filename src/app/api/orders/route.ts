@@ -70,16 +70,16 @@ export async function POST(request: NextRequest) {
   const fullName = cleanText(payload.fullName, 120);
   const phone = cleanText(payload.phone, 32);
   const state = cleanText(payload.state, 80) || "Nueva Esparta (Margarita)";
-  const location = cleanText(payload.location, 160);
-  const address = cleanText(payload.address, 600);
+  const location = cleanText(payload.location, 160) || state;
+  const address = cleanText(payload.address, 600) || "Coordinar entrega por WhatsApp";
   const deliveryNotes = cleanText(payload.deliveryNotes, 500);
-  const paymentMethod = cleanText(payload.paymentMethod, 80) || "COD";
+  const paymentMethod = cleanText(payload.paymentMethod, 80) || "COD (Pago al recibir)";
   const paymentReference = cleanText(payload.paymentReference, 120);
   const selectedBundle = getBundle(payload.bundle);
 
-  if (!fullName || !phone || !address || !selectedBundle) {
+  if (!fullName || !phone || !selectedBundle) {
     return NextResponse.json({
-      error: "Revisa tu nombre, WhatsApp, dirección y pack seleccionado.",
+      error: "Por favor indica tu nombre, WhatsApp y el pack seleccionado.",
     }, { status: 400 });
   }
 

@@ -102,41 +102,9 @@ function scrollToId(id: string) {
 type FormValues = {
   fullName: string;
   phone: string;
-  state: string;
-  location: string;
-  address: string;
-  deliveryNotes: string;
-  paymentType: "cod" | "pay_now";
-  paymentMethod: "pago_movil" | "usdt" | "efectivo";
   paymentReference: string;
 };
 type Receipt = { id: number; bundle: BundleId; total: number; isExpress: boolean; phone: string };
-
-const VENEZUELA_STATES = [
-  "Nueva Esparta (Margarita) ⚡ Express 1 hora",
-  "Distrito Capital (Caracas) 📦 Zoom / MRW (3 días)",
-  "Miranda 📦 Zoom / MRW (3 días)",
-  "Anzoátegui 📦 Zoom / MRW (3 días)",
-  "Aragua 📦 Zoom / MRW (3 días)",
-  "Carabobo 📦 Zoom / MRW (3 días)",
-  "Lara 📦 Zoom / MRW (3 días)",
-  "Zulia 📦 Zoom / MRW (3 días)",
-  "Bolívar 📦 Zoom / MRW (3 días)",
-  "Monagas 📦 Zoom / MRW (3 días)",
-  "Falcón 📦 Zoom / MRW (3 días)",
-  "Táchira 📦 Zoom / MRW (3 días)",
-  "Mérida 📦 Zoom / MRW (3 días)",
-  "Sucre 📦 Zoom / MRW (3 días)",
-  "Guárico 📦 Zoom / MRW (3 días)",
-  "Barinas 📦 Zoom / MRW (3 días)",
-  "Portuguesa 📦 Zoom / MRW (3 días)",
-  "Yaracuy 📦 Zoom / MRW (3 días)",
-  "Trujillo 📦 Zoom / MRW (3 días)",
-  "Cojedes 📦 Zoom / MRW (3 días)",
-  "Apure 📦 Zoom / MRW (3 días)",
-  "Delta Amacuro 📦 Zoom / MRW (3 días)",
-  "Amazonas 📦 Zoom / MRW (3 días)",
-];
 
 export default function SpicyLanding() {
   const [bundleId, setBundleId] = useState<BundleId>("popular");
@@ -147,18 +115,13 @@ export default function SpicyLanding() {
   const [policy, setPolicy] = useState<"privacy" | "shipping" | null>(null);
   const [hasOrder, setHasOrder] = useState(false);
   const [showSticky, setShowSticky] = useState(false);
+  const [showExpressPay, setShowExpressPay] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [receipt, setReceipt] = useState<Receipt | null>(null);
   const [form, setForm] = useState<FormValues>({
     fullName: "",
     phone: "",
-    state: VENEZUELA_STATES[0],
-    location: "Margarita",
-    address: "",
-    deliveryNotes: "",
-    paymentType: "pay_now",
-    paymentMethod: "pago_movil",
     paymentReference: "",
   });
   const checkoutRef = useRef<HTMLDialogElement>(null);
@@ -170,7 +133,6 @@ export default function SpicyLanding() {
   const submitting = useRef(false);
 
   const selected = getBundle(bundleId) ?? DEFAULT_BUNDLE;
-  const isMargarita = form.state.includes("Margarita");
   const total = selected.price + selected.shipping;
   const cryptoTotal = selected.cryptoPrice + selected.shipping;
   const saving = selected.regularPrice - selected.price;
@@ -265,12 +227,26 @@ export default function SpicyLanding() {
       const response = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, bundle: bundleId }),
+        body: JSON.stringify({
+          fullName: form.fullName,
+          phone: form.phone,
+          bundle: bundleId,
+          paymentMethod: showExpressPay ? "pago_movil_express" : "whatsapp",
+          paymentReference: showExpressPay ? form.paymentReference : undefined,
+        }),
       });
       const data = await response.json() as { ok?: boolean; orderId?: number; isExpress?: boolean; error?: string };
       if (!response.ok || !data.ok || !data.orderId) throw new Error(data.error || "No pudimos registrar tu pedido.");
       setReceipt({ id: data.orderId, bundle: bundleId, total, isExpress: !!data.isExpress, phone: form.phone });
       track("Lead", { content_name: selected.name, value: total, currency: "USD" });
+
+      const waMsg = showExpressPay
+        ? `Hola! Acabo de registrar mi pedido #${data.orderId} en la web con Pago Express. Combo: ${bagLabel(selected.quantity)} (${money(total)}). Nombre: ${form.fullName}. ${form.paymentReference ? `Referencia: ${form.paymentReference}. ` : ""}Adjunto comprobante para despachar.`
+        : `Hola! Acabo de registrar mi pedido #${data.orderId} en la web. Combo: ${bagLabel(selected.quantity)} (${money(total)}). Nombre: ${form.fullName}. Quedo atento a su llamada o mensaje para confirmar.`;
+      const waUrl = `${SUPPORT}?text=${encodeURIComponent(waMsg)}`;
+      if (typeof window !== "undefined") {
+        window.open(waUrl, "_blank");
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Ocurrió un error. Intenta de nuevo.");
     } finally {
@@ -283,8 +259,8 @@ export default function SpicyLanding() {
     <>
       <a className="skip-link" href="#producto">Ir al producto</a>
       <div className="announcement">
-        <span><Icon name="gift" /> Lleva 2 y la tercera va por nuestra cuenta.</span>
-        <span className="announcement-extra">Envío gratis en packs de 3 y 5 <Icon name="arrow" /></span>
+        <span><Icon name="truck" /> <b>Envíos a toda Venezuela en sobre 100% ciego y sellado</b></span>
+        <span className="announcement-extra"><Icon name="message" /> Atención directa por WhatsApp</span>
       </div>
 
       <header className="site-header">
@@ -345,23 +321,47 @@ export default function SpicyLanding() {
               <fieldset className="pack-picker">
                 <legend>Elige tus próximas citas <small>1 bolsita = 1 par</small></legend>
                 <div className="pack-options">
-                  {PRODUCT_BUNDLES.map((item) => <label className={`pack-option ${bundleId === item.id ? "is-selected" : ""} ${item.id === "popular" ? "pack-popular" : ""}`} key={item.id}>
-                    {item.id === "popular" && <span className="pack-ribbon">2 + 1 gratis</span>}
-                    <input type="radio" name="product-pack" value={item.id} checked={bundleId === item.id} onChange={() => selectBundle(item.id)} />
-                    <span className="pack-radio"><Icon name="check" /></span>
-                    <strong>{item.quantity} {item.quantity === 1 ? "cita" : "citas"}</strong>
-                    <span className="pack-quantity">{bagLabel(item.quantity)}</span>
-                    <b>{money(item.price)}</b>
-                    <span className="pack-crypto-tag">o {cryptoMoney(item.cryptoPrice)}</span>
-                    <small>{item.shippingLabel}</small>
-                  </label>)}
+                  {PRODUCT_BUNDLES.map((item) => (
+                    <label className={`pack-option ${bundleId === item.id ? "is-selected" : ""} ${item.id === "popular" ? "pack-popular" : ""}`} key={item.id}>
+                      {item.id === "popular" && <span className="pack-ribbon">2 + 1 gratis</span>}
+                      <input type="radio" name="product-pack" value={item.id} checked={bundleId === item.id} onChange={() => selectBundle(item.id)} />
+                      <span className="pack-radio"><Icon name="check" /></span>
+                      <strong>{item.quantity} {item.quantity === 1 ? "cita" : "citas"}</strong>
+                      <span className="pack-quantity">{bagLabel(item.quantity)}</span>
+                      <b>{money(item.price)}</b>
+                      <span className="per-date-tag">
+                        {item.id === "popular" ? "¡Solo $8 por cita!" : item.id === "escapada" ? "¡Solo $7.20 por cita!" : "$12 por cita"}
+                      </span>
+                      <span className="pack-crypto-tag">o {cryptoMoney(item.cryptoPrice)}</span>
+                      <small>{item.shippingLabel}</small>
+                    </label>
+                  ))}
                 </div>
               </fieldset>
 
-              <p className="pack-context" aria-live="polite"><Icon name={selected.hasFreeShipping ? "gift" : "truck"} />{bundleId === "popular" ? "Tu tercera bolsita es gratis. Ahorras $12 + Envío 100% GRATIS." : bundleId === "escapada" ? "Lleva 5 y paga solo 3. Envío VIP 100% GRATIS." : "Combo de 1 bolsita para probar. Envío NO incluido (flete cobro a destino al recibir)."}</p>
+              <p className="pack-context" aria-live="polite"><Icon name={selected.hasFreeShipping ? "gift" : "truck"} />{bundleId === "popular" ? "Tu tercera bolsita es gratis. Ahorras $12 + Envío 100% GRATIS." : bundleId === "escapada" ? "Lleva 5 y paga solo 3. Envío VIP 100% GRATIS." : "Combo de 1 bolsita para probar. Envío NO incluido (flete cobro a destino)."}</p>
               <div className="purchase-actions" ref={purchaseRef}>
-                <button className="button-primary buy-button" onClick={openCheckout}><Icon name="bag" /><span>Pedir ahora · {money(total)}{!selected.hasFreeShipping ? " + flete" : ""}</span><Icon name="arrow" /></button>
-                <p className="payment-reassurance"><Icon name="lock" /> Pagas al recibir. Sin adelantos, sin sorpresas.</p>
+                <div className="dual-cta-group">
+                  <button className="button-primary buy-button" onClick={openCheckout}>
+                    <Icon name="bag" />
+                    <span>Pedir ahora · {money(total)}{!selected.hasFreeShipping ? " + flete" : ""}</span>
+                    <Icon name="arrow" />
+                  </button>
+                  <a
+                    className="button-secondary-whatsapp"
+                    href={`${SUPPORT}?text=${encodeURIComponent("Hola! Tengo una consulta sobre Spicy Cubbes antes de ordenar. ¿Me pueden asesorar?")}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <Icon name="message" />
+                    <span>Preguntar por WhatsApp</span>
+                  </a>
+                </div>
+                <div className="trust-badges-inline">
+                  <span><Icon name="lock" /> Sobre ciego 100% sellado</span>
+                  <span><Icon name="truck" /> Margarita 1h · Nacional 3 días</span>
+                  <span><Icon name="check" /> Discreción absoluta garantizada</span>
+                </div>
               </div>
               <div className="delivery-benefits"><span><Icon name="truck" />Envíos a toda Venezuela</span><span><Icon name="box" />Empaque sin logos</span></div>
 
@@ -379,6 +379,32 @@ export default function SpicyLanding() {
           <div><Icon name="heart" /><p>Siempre de a dos.<span>Un cubito para cada uno.</span></p></div>
           <div><Icon name="box" /><p>Su pequeño secreto.<span>Discreto de principio a fin.</span></p></div>
         </div>
+
+        {/* --- SECCION 01: AGITACION EMPATICA (ROMPE LA RUTINA) --- */}
+        <section className="pain-points-section page-width">
+          <div className="section-header">
+            <span className="eyebrow">ROMPE LA RUTINA</span>
+            <h2>¿A veces sienten que las noches<br /><em>se volvieron predecibles?</em></h2>
+            <p className="section-subtitle">Pasa en las mejores relaciones. Entre el cansancio del trabajo, la casa y las pantallas, la chispa se va apagando sin darse cuenta.</p>
+          </div>
+          <div className="pain-points-grid">
+            <div className="pain-card">
+              <span className="pain-card-icon">😫</span>
+              <h3>El cansancio de la semana</h3>
+              <p>El trabajo, el tráfico, los pendientes diarios… Llegan a la cama con 1% de energía y lo único que provoca es dormir o mirar el techo.</p>
+            </div>
+            <div className="pain-card">
+              <span className="pain-card-icon">📱</span>
+              <h3>La desconexión en pareja</h3>
+              <p>Cada quien revisando su teléfono o viendo una serie en automático. Falta ese juego previo y la complicidad que tenían al inicio.</p>
+            </div>
+            <div className="pain-card">
+              <span className="pain-card-icon">🍬</span>
+              <h3>La solución dulce y simple</h3>
+              <p>Dos cubitos dulces de durazno con un toque de ají, 20 minutos antes, y la noche vuelve a ser de ustedes.</p>
+            </div>
+          </div>
+        </section>
 
         <section className="ritual-section page-width" id="el-ritual">
           <div className="ritual-images">
@@ -447,156 +473,127 @@ export default function SpicyLanding() {
 
       <dialog ref={checkoutRef} className="checkout-dialog" aria-labelledby="checkout-title" onClose={() => setCheckoutOpen(false)} onCancel={(event) => { event.preventDefault(); setCheckoutOpen(false); }} onClick={(event) => { if (event.target === event.currentTarget) setCheckoutOpen(false); }}>
         <div className="checkout-panel">
-          <div className="checkout-header"><span><Icon name="bag" /> Tu próximo plan</span><button className="icon-button" onClick={() => setCheckoutOpen(false)} aria-label="Cerrar pedido"><Icon name="close" /></button></div>
+          <div className="checkout-header"><span><Icon name="bag" /> Tu Pedido</span><button className="icon-button" onClick={() => setCheckoutOpen(false)} aria-label="Cerrar pedido"><Icon name="close" /></button></div>
           {receipt ? <div className="checkout-success" role="status">
             <span className="success-check"><Icon name="check" /></span>
             <span className="eyebrow">PEDIDO #{receipt.id} REGISTRADO</span>
-            <h2 id="checkout-title">{receipt.isExpress ? "¡Envío Express Margarita!" : "¡Pedido Confirmado Zoom / MRW!"}</h2>
+            <h2 id="checkout-title">¡Todo listo para coordinar!</h2>
             <p>
-              {receipt.isExpress
-                ? "Tu pedido está listo para salir. El delivery tarda aproximadamente 1 hora en Margarita (en horario laboral de 9am a 7pm)."
-                : "Tu paquete saldrá por agencia Zoom o MRW en sobre 100% ciego. Tiempo de tránsito estimado: 3 días hábiles."}
+              Hemos registrado tu pedido de <b>{receiptBundle?.quantity ? bagLabel(receiptBundle.quantity) : "Spicy Cubbes"}</b>. Te escribiremos de inmediato a tu WhatsApp para coordinar los detalles de despacho con total discreción.
             </p>
 
             <div className="receipt-total">
               <div>
-                <span>Total a pagar:</span>
+                <span>Total:</span>
                 <strong>{money(receipt.total)}</strong>
               </div>
               <div style={{ marginTop: "4px" }}>
-                <span>O en USDT (15% OFF):</span>
-                <strong style={{ color: "#059669" }}>{cryptoMoney(cryptoTotal)}</strong>
+                <span>{showExpressPay ? "⚡ Pago Express Prioritario" : "💬 Coordinar por WhatsApp"}</span>
               </div>
             </div>
 
-            <div className="payment-instructions-box">
-              <h4>💳 Realiza tu pago para procesar el despacho:</h4>
-              <div className="payment-data-item">
-                <b>📱 Pago Móvil (Mercantil):</b>
-                <p>Banco: <b>Mercantil (0105)</b> | Tel: <b>0424-8261957</b> | CI: <b>31.455.753</b></p>
-              </div>
-              <div className="payment-data-item">
-                <b>💰 Binance Pay (15% OFF en USDT):</b>
-                <p>Pay ID: <b>1023279087</b> | Correo: <b>davidg.050906@gmail.com</b></p>
-              </div>
-            </div>
-
-            <a className="button-primary" href={`${SUPPORT}?text=${encodeURIComponent(`Hola! Acabo de registrar mi pedido #${receipt.id} en la web (${receipt.isExpress ? "Express en Margarita" : "Nacional por Zoom/MRW"}). Combo: ${bagLabel(receiptBundle?.quantity ?? 3)}. Total: ${money(receipt.total)} (${cryptoMoney(cryptoTotal)}). ${receiptBundle?.hasFreeShipping ? "Envío gratis incluido" : "Envío NO incluido (flete cobro a destino)"}. Ya tengo el comprobante de pago.`)}`} target="_blank" rel="noreferrer" style={{ marginTop: "16px" }}>
-              Enviar comprobante por WhatsApp <Icon name="arrow" />
+            <a
+              className="button-primary"
+              href={`${SUPPORT}?text=${encodeURIComponent(
+                showExpressPay
+                  ? `Hola! Acabo de registrar mi pedido #${receipt.id} en la web con Pago Express. Combo: ${bagLabel(receiptBundle?.quantity ?? 3)} (${money(receipt.total)}). Nombre: ${form.fullName}. ${form.paymentReference ? `Referencia: ${form.paymentReference}. ` : ""}Adjunto mi comprobante para despachar.`
+                  : `Hola! Acabo de registrar mi pedido #${receipt.id} en la web. Combo: ${bagLabel(receiptBundle?.quantity ?? 3)} (${money(receipt.total)}). Nombre: ${form.fullName}. Por favor indíquenme cómo coordinar la entrega.`
+              )}`}
+              target="_blank"
+              rel="noreferrer"
+              style={{ marginTop: "16px" }}
+            >
+              Abrir WhatsApp ahora <Icon name="arrow" />
             </a>
-            <button className="text-button" onClick={() => { setReceipt(null); setCheckoutOpen(false); }}>Seguir mirando <Icon name="arrow" /></button>
+            <button className="text-button" onClick={() => { setReceipt(null); setCheckoutOpen(false); }}>Volver a la tienda <Icon name="arrow" /></button>
           </div> : <>
-            <div className="checkout-heading"><span className="eyebrow">FINALIZA TU COMPRA</span><h2 id="checkout-title">Datos de Entrega & Pago</h2><p>Completa tus datos. Envíos discretos en sobre ciego a toda Venezuela.</p></div>
+            <div className="checkout-heading">
+              <span className="eyebrow">PEDIDO RÁPIDO</span>
+              <h2 id="checkout-title">Solo 2 datos para pedir</h2>
+              <p>Te llamamos para confirmar tu pedido. <b>No pagas nada ahora.</b></p>
+            </div>
             <form onSubmit={submitOrder} className="checkout-form">
               <fieldset disabled={loading}>
-                <div className="checkout-product"><Image src={pouch} alt="Bolsita individual Spicy Cubbes" width={80} height={95} sizes="80px" /><div><strong>Spicy Cubbes</strong><span>Durazno & ají · Un par por bolsita</span><label className="sr-only" htmlFor="checkout-pack">Pack seleccionado</label><select id="checkout-pack" value={bundleId} onChange={(event) => selectBundle(event.target.value as BundleId)}>{PRODUCT_BUNDLES.map((item) => <option value={item.id} key={item.id}>{bagLabel(item.quantity)} — {money(item.price)}{item.hasFreeShipping ? " · Envío 100% GRATIS" : " · Envío NO incluido (Cobro a destino)"}</option>)}</select></div></div>
+                <div className="checkout-product"><Image src={pouch} alt="Bolsita individual Spicy Cubbes" width={75} height={90} sizes="75px" /><div><strong>Spicy Cubbes</strong><span>Durazno dulce con toque de ají</span><label className="sr-only" htmlFor="checkout-pack">Pack seleccionado</label><select id="checkout-pack" value={bundleId} onChange={(event) => selectBundle(event.target.value as BundleId)}>{PRODUCT_BUNDLES.map((item) => <option value={item.id} key={item.id}>{bagLabel(item.quantity)} — {money(item.price)}{item.hasFreeShipping ? " · Envío GRATIS" : " · Flete a destino"}</option>)}</select></div></div>
                 <div className="checkout-totals">
                   <div><span>{bagLabel(selected.quantity)}</span><span>{money(selected.price)}</span></div>
-                  <div><span>Envío{selected.id === "escapada" ? " VIP" : ""}</span><span className={selected.hasFreeShipping ? "free-shipping" : ""}>{selected.hasFreeShipping ? "100% GRATIS (Por nuestra cuenta)" : "NO incluido (Cobro a destino)"}</span></div>
-                  <div className="total-line"><strong>Total producto</strong><strong>{money(total)} <small>USD</small></strong></div>
+                  <div><span>Envío{selected.id === "escapada" ? " VIP" : ""}</span><span className={selected.hasFreeShipping ? "free-shipping" : ""}>{selected.hasFreeShipping ? "100% GRATIS" : "Cobro a destino"}</span></div>
+                  <div className="total-line"><strong>Total a pagar</strong><strong>{money(total)} <small>USD</small></strong></div>
                   <div className="crypto-checkout-note">
-                    <span>💵 O paga <strong>{cryptoMoney(selected.cryptoPrice + selected.shipping)}</strong> (15% OFF en USDT o efectivo)</span>
+                    <span>💵 O paga <strong>{cryptoMoney(cryptoTotal)}</strong> (15% OFF en Binance USDT)</span>
                   </div>
                 </div>
 
-                {/* --- AVISO DE TIEMPO DE ENVIO SEGUN ESTADO --- */}
-                <div className={`shipping-alert ${isMargarita ? "shipping-alert-express" : "shipping-alert-national"}`}>
-                  {isMargarita ? (
-                    !selected.hasFreeShipping ? (
-                      <p>⚡ <b>Envío Express Margarita:</b> Entrega en tu puerta en aprox. <b>1 hora</b> (9am a 7pm). <br /><b style={{ color: "#b91c1c" }}>⚠️ Para el combo de $12 el envío NO es gratis:</b> El costo del motorizado corre por cuenta del cliente al recibir.</p>
-                    ) : (
-                      <p>⚡ <b>Envío Express Margarita:</b> Entrega en tu puerta en aprox. <b>1 hora</b> (9am a 7pm). <b>¡Delivery 100% GRATIS incluido en tu combo!</b></p>
-                    )
-                  ) : (
-                    !selected.hasFreeShipping ? (
-                      <p>📦 <b>Envío Nacional por Zoom / MRW:</b> Despacho a oficina o dirección en <b>3 días hábiles</b>. <br /><b style={{ color: "#b91c1c" }}>⚠️ Para el combo de $12 el envío NO es gratis:</b> Flete Cobro a Destino (COD) pagado por el cliente en la agencia.</p>
-                    ) : (
-                      <p>📦 <b>Envío Nacional por Zoom / MRW:</b> Despacho en <b>3 días hábiles</b> en sobre 100% sellado y ciego. <b>¡Flete 100% GRATIS cubierto por nosotros!</b></p>
-                    )
+                {/* --- AVISO REASEGURO TELEFÓNICO --- */}
+                <div className="call-reassurance-box">
+                  <Icon name="message" />
+                  <span>📞 <b>Te llamamos para confirmar:</b> No tienes que pagar nada ahora.</span>
+                </div>
+
+                <div className="checkout-fields" style={{ marginTop: "12px" }}>
+                  <label className="field field-wide"><span>Tu Nombre y Apellido:</span><input name="fullName" required maxLength={120} autoComplete="name" placeholder="¿A nombre de quién?" value={form.fullName} onChange={(event) => updateField("fullName", event.target.value)} /></label>
+                  <label className="field field-wide"><span>Tu WhatsApp (para llamarte y coordinar):</span><input name="phone" type="tel" required minLength={7} maxLength={32} autoComplete="tel" placeholder="0412 1234567" value={form.phone} onChange={(event) => updateField("phone", event.target.value)} /></label>
+                </div>
+
+                {/* --- BOTON DESPLEGABLE PAGO EXPRESS --- */}
+                <div className="express-pay-toggle-box">
+                  <button
+                    type="button"
+                    className={`express-toggle-btn ${showExpressPay ? "active" : ""}`}
+                    onClick={() => setShowExpressPay(!showExpressPay)}
+                  >
+                    <span>⚡ ¿Deseas hacer Pago Express de una vez?</span>
+                    <b>{showExpressPay ? "Ocultar ▲" : "Ver datos de pago ▼"}</b>
+                  </button>
+
+                  {showExpressPay && (
+                    <div className="express-pay-content">
+                      <p className="express-note">Transfiere ahora y pega tu referencia para despacho express prioritario:</p>
+                      <div className="pay-now-grid">
+                        <div className="pay-box">
+                          <strong>📱 Pago Móvil Mercantil</strong>
+                          <p>Banco: <b>Mercantil (0105)</b></p>
+                          <p>Teléfono: <b>0424 8261957</b></p>
+                          <p>C.I.: <b>31.455.753</b></p>
+                          <small>Monto: Equivalente a {money(total)}</small>
+                        </div>
+                        <div className="pay-box">
+                          <strong>💰 Binance USDT (15% OFF)</strong>
+                          <p>Pay ID: <b>1023279087</b></p>
+                          <p>Correo: <b>davidg.050906@gmail.com</b></p>
+                          <small>Monto: <b>{cryptoMoney(cryptoTotal)}</b></small>
+                        </div>
+                      </div>
+                      <label className="field field-wide" style={{ marginTop: "10px" }}>
+                        <span>Pega aquí tu número de Referencia bancaria (Opcional):</span>
+                        <input
+                          placeholder="Ej. Ref #849204 o Hash Binance"
+                          value={form.paymentReference}
+                          onChange={(e) => updateField("paymentReference", e.target.value)}
+                        />
+                      </label>
+                    </div>
                   )}
                 </div>
 
-                <div className="checkout-fields">
-                  <label className="field field-wide">
-                    <span>Selecciona tu Estado de Entrega:</span>
-                    <select
-                      value={form.state}
-                      onChange={(e) => updateField("state", e.target.value)}
-                      className="state-select"
-                    >
-                      {VENEZUELA_STATES.map((s) => (
-                        <option key={s} value={s}>{s}</option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label className="field field-wide"><span>Nombre y apellido</span><input name="fullName" required maxLength={120} autoComplete="name" placeholder="¿A nombre de quién?" value={form.fullName} onChange={(event) => updateField("fullName", event.target.value)} /></label>
-                  <label className="field"><span>WhatsApp (para coordinar)</span><input name="phone" type="tel" required minLength={7} maxLength={32} autoComplete="tel" placeholder="0412 1234567" value={form.phone} onChange={(event) => updateField("phone", event.target.value)} /></label>
-                  <label className="field"><span>Ciudad / Sector</span><input name="location" required maxLength={160} autoComplete="address-level2" placeholder={isMargarita ? "Ej. Porlamar / Pampatar / Juan Griego" : "Ej. Caracas / Valencia / Maracaibo"} value={form.location} onChange={(event) => updateField("location", event.target.value)} /></label>
-                  <label className="field field-wide"><span>Dirección exacta o sucursal Zoom / MRW</span><textarea name="address" required maxLength={600} autoComplete="street-address" rows={2} placeholder="Calle, casa, edificio o nombre de la agencia Zoom / MRW donde retiras" value={form.address} onChange={(event) => updateField("address", event.target.value)} /></label>
-                </div>
-
-                {/* --- SELECCION DE FORMA DE PAGO --- */}
-                <div className="payment-choice-section">
-                  <span className="payment-choice-title">Modalidad de Pago:</span>
-                  <div className="payment-choice-options">
-                    <label className={`payment-radio ${form.paymentType === "pay_now" ? "is-selected" : ""}`}>
-                      <input
-                        type="radio"
-                        name="paymentType"
-                        value="pay_now"
-                        checked={form.paymentType === "pay_now"}
-                        onChange={() => updateField("paymentType", "pay_now")}
-                      />
-                      <span>⚡ <b>Pagar ahora (Pago Móvil o USDT con 15% OFF)</b> — <i>Recomendado para despacho inmediato</i></span>
-                    </label>
-
-                    <label className="payment-radio payment-radio-disabled" title="Disponible próximamente">
-                      <input
-                        type="radio"
-                        name="paymentType"
-                        value="cod"
-                        disabled
-                      />
-                      <span className="flex items-center gap-2 text-gray-400">
-                        🤝 <span>Pago Contra Entrega (Efectivo al recibir)</span>
-                        <span className="coming-soon-badge">Próximamente</span>
-                      </span>
-                    </label>
-                  </div>
-
-                  <div className="pay-now-details">
-                    <div className="pay-now-badge">Realiza tu pago para procesar el envío:</div>
-                    <div className="pay-now-grid">
-                      <div className="pay-box">
-                        <strong>📱 Pago Móvil Mercantil</strong>
-                        <p>Banco: <b>Mercantil (0105)</b></p>
-                        <p>Teléfono: <b>0424 8261957</b></p>
-                        <p>C.I.: <b>31.455.753</b></p>
-                        <small>Monto: Equivalente a {money(total)}</small>
-                      </div>
-                      <div className="pay-box">
-                        <strong>💰 Binance USDT (15% OFF)</strong>
-                        <p>Pay ID: <b>1023279087</b></p>
-                        <p>Correo: <b>davidg.050906@gmail.com</b></p>
-                        <small>Monto a transferir: <b>{cryptoMoney(cryptoTotal)}</b></small>
-                      </div>
-                    </div>
-                    <label className="field field-wide" style={{ marginTop: "10px" }}>
-                      <span>Pega aquí tu número de Referencia bancaria o Binance (Opcional):</span>
-                      <input
-                        placeholder="Ej. Ref #849204 o Hash Binance"
-                        value={form.paymentReference}
-                        onChange={(e) => updateField("paymentReference", e.target.value)}
-                      />
-                    </label>
-                  </div>
-                </div>
-
-                <details className="delivery-notes"><summary>Añadir una nota de entrega <span>+</span></summary><label className="sr-only" htmlFor="delivery-notes">Notas de entrega</label><input id="delivery-notes" name="deliveryNotes" maxLength={500} placeholder="Ej. Llamar antes de llegar o entregar en sobre ciego" value={form.deliveryNotes} onChange={(event) => updateField("deliveryNotes", event.target.value)} /></details>
                 {error && <div className="form-error" role="alert">{error} <a href={SUPPORT} target="_blank" rel="noreferrer">Te ayudamos por WhatsApp.</a></div>}
-                <button type="submit" className="button-primary checkout-submit" disabled={loading}>{loading ? "Procesando pedido…" : `Confirmar Pedido · ${money(total)}`}<Icon name={loading ? "heart" : "arrow"} /></button>
-                <p className="checkout-confidential"><Icon name="lock" /> Tu paquete va en sobre ciego sellado sin marcas ni fotos exteriores.</p>
+
+                <button type="submit" className="button-primary checkout-submit" disabled={loading} style={{ marginTop: "16px" }}>
+                  {loading
+                    ? "Procesando pedido…"
+                    : showExpressPay
+                    ? `⚡ Enviar Comprobante por WhatsApp · ${money(total)}`
+                    : `💬 Pedir · Te llamamos para confirmar (${money(total)})`}
+                  <Icon name={loading ? "heart" : "arrow"} />
+                </button>
+
+                {!showExpressPay && (
+                  <p className="reassurance-subtext">
+                    📞 <b>Te llamamos para confirmar tu pedido.</b> No pagas nada ahora.
+                  </p>
+                )}
+
+                <p className="checkout-confidential"><Icon name="lock" /> Sobre 100% sellado y ciego. Nadie sabe qué compraste.</p>
               </fieldset>
             </form>
           </>}
