@@ -238,6 +238,7 @@ export default function SpicyLanding() {
       const data = await response.json() as { ok?: boolean; orderId?: number; isExpress?: boolean; error?: string };
       if (!response.ok || !data.ok || !data.orderId) throw new Error(data.error || "No pudimos registrar tu pedido.");
       setReceipt({ id: data.orderId, bundle: bundleId, total, isExpress: !!data.isExpress, phone: form.phone });
+      track("Purchase", { content_name: selected.name, value: total, currency: "USD", num_items: selected.quantity });
       track("Lead", { content_name: selected.name, value: total, currency: "USD" });
 
       const waMsg = showExpressPay
