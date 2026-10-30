@@ -14,7 +14,6 @@ import {
 import pouch from "../../public/images/pouch-single.jpg";
 import night from "../../public/images/pouches-hand-night.jpg";
 import flatlay from "../../public/images/photo-flatlay-branded.jpg";
-import deliveryNight from "../../public/images/entrega-real-noche.jpg";
 
 declare global {
   interface Window {
@@ -113,6 +112,9 @@ export default function SpicyLanding() {
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [zoomOpen, setZoomOpen] = useState(false);
   const [policy, setPolicy] = useState<"privacy" | "shipping" | null>(null);
+  const [promoOpen, setPromoOpen] = useState(false);
+  const [promoPhone, setPromoPhone] = useState("");
+  const [promoError, setPromoError] = useState("");
   const [hasOrder, setHasOrder] = useState(false);
   const [showSticky, setShowSticky] = useState(false);
   const [showExpressPay, setShowExpressPay] = useState(false);
@@ -127,6 +129,7 @@ export default function SpicyLanding() {
   const checkoutRef = useRef<HTMLDialogElement>(null);
   const zoomRef = useRef<HTMLDialogElement>(null);
   const policyRef = useRef<HTMLDialogElement>(null);
+  const promoRef = useRef<HTMLDialogElement>(null);
   const purchaseRef = useRef<HTMLDivElement>(null);
   const productRef = useRef<HTMLElement>(null);
   const checkoutTracked = useRef(false);
@@ -139,6 +142,24 @@ export default function SpicyLanding() {
   const photo = photos[photoIndex];
   const story = stories[storyIndex];
   const receiptBundle = receipt ? getBundle(receipt.bundle) : null;
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const dismissed = sessionStorage.getItem("spicy_promo_3x2_dismissed");
+    if (!dismissed) {
+      const timer = setTimeout(() => {
+        setPromoOpen(true);
+      }, 1600);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  useEffect(() => {
+    const dialog = promoRef.current;
+    if (!dialog) return;
+    if (promoOpen && !dialog.open) dialog.showModal();
+    if (!promoOpen && dialog.open) dialog.close();
+  }, [promoOpen]);
 
   useEffect(() => {
     const target = productRef.current;
@@ -183,11 +204,11 @@ export default function SpicyLanding() {
   }, [policy]);
 
   useEffect(() => {
-    if (!checkoutOpen && !zoomOpen && !policy) return;
+    if (!checkoutOpen && !zoomOpen && !policy && !promoOpen) return;
     const before = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = before; };
-  }, [checkoutOpen, zoomOpen, policy]);
+  }, [checkoutOpen, zoomOpen, policy, promoOpen]);
 
   function beginCheckout() {
     if (!checkoutTracked.current) {
@@ -207,6 +228,61 @@ export default function SpicyLanding() {
     beginCheckout();
     setHasOrder(true);
     setCheckoutOpen(true);
+  }
+
+  function closePromo() {
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("spicy_promo_3x2_dismissed", "true");
+    }
+    setPromoOpen(false);
+  }
+
+  async function handlePromoSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setPromoError("");
+    const cleanedPhone = promoPhone.replace(/[\s()-]/g, "");
+    if (!cleanedPhone || cleanedPhone.length < 7) {
+      setPromoError("Por favor ingresa un número de WhatsApp válido.");
+      return;
+    }
+    const name = "Cliente 3x2";
+    const phone = promoPhone.trim();
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("spicy_promo_3x2_dismissed", "true");
+    }
+    setBundleId("popular");
+    setForm((current) => ({ ...current, fullName: name, phone }));
+    setPromoOpen(false);
+
+    setLoading(true);
+    try {
+      const response = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fullName: name,
+          phone,
+          bundle: "popular",
+          paymentMethod: "whatsapp",
+        }),
+      });
+      const data = await response.json() as { ok?: boolean; orderId?: number };
+      if (response.ok && data.ok && data.orderId) {
+        setReceipt({ id: data.orderId, bundle: "popular", total: 24, isExpress: false, phone });
+        track("Purchase", { content_name: "Lleva 2 y la 3ra GRATIS · 3 bolsitas (3 citas)", value: 24, currency: "USD", num_items: 3 });
+        track("Lead", { content_name: "Promo Flash 3x2", value: 24, currency: "USD" });
+        setHasOrder(true);
+        setCheckoutOpen(true);
+        const waMsg = `Hola! Acabo de registrar la PROMO FLASH 3x2 en la web (Pedido #${data.orderId}). Combo 3 bolsitas por $24 con Envío Gratis. Nombre: ${name}. Quedo atento a su llamada o mensaje para confirmar.`;
+        window.open(`${SUPPORT}?text=${encodeURIComponent(waMsg)}`, "_blank");
+      } else {
+        openCheckout();
+      }
+    } catch {
+      openCheckout();
+    } finally {
+      setLoading(false);
+    }
   }
 
   function changePhoto(direction: number) {
@@ -441,18 +517,10 @@ export default function SpicyLanding() {
           <div className="faq-intro">
             <span className="eyebrow">LAS COSAS CLARAS</span>
             <h2>Así llega<br /><em>tu pedido.</em></h2>
-            
-            <div className="parcel-preview-box">
-              <div className="parcel-preview-image">
-                <Image src={deliveryNight} alt="Entregas reales en mano de Spicy Cubbes en la noche" placeholder="blur" sizes="320px" className="object-cover rounded-md" />
-                <span className="delivery-photo-tag">📸 Entregas reales · Foto cliente</span>
-              </div>
-              <p className="parcel-preview-desc">
-                🍬 <b>Cero sospechas:</b> A simple vista parecen unas gomitas dulces normales. Recibes tus bolsitas herméticas individuales con los dos cubitos listos para llevar contigo sin llamar la atención de nadie.
-              </p>
-            </div>
-
-            <a href={SUPPORT} target="_blank" rel="noreferrer" className="text-button" style={{ marginTop: "14px" }}>
+            <p style={{ marginTop: "16px", color: "var(--muted)", fontSize: "14.5px", lineHeight: "1.75", maxWidth: "340px" }}>
+              En sobre o caja exterior neutra, 100% sellada y sin referencias al contenido (sobre ciego). Máxima discreción garantizada en cada entrega.
+            </p>
+            <a href={SUPPORT} target="_blank" rel="noreferrer" className="text-button" style={{ marginTop: "24px" }}>
               ¿Otra duda? Hablemos <Icon name="arrow" />
             </a>
           </div>
@@ -607,6 +675,59 @@ export default function SpicyLanding() {
 
       <dialog ref={policyRef} className="policy-dialog" aria-labelledby="policy-title" onClose={() => setPolicy(null)} onCancel={(event) => { event.preventDefault(); setPolicy(null); }} onClick={(event) => { if (event.target === event.currentTarget) setPolicy(null); }}>
         <div className="policy-content"><button className="icon-button policy-close" onClick={() => setPolicy(null)} aria-label="Cerrar información"><Icon name="close" /></button><span className="eyebrow">SPICY CUBBES VENEZUELA</span><h2 id="policy-title">{policy === "privacy" ? "Tu privacidad importa." : "Entregas y pagos."}</h2>{policy === "privacy" ? <><p>Recogemos tu nombre, WhatsApp, ubicación, dirección y, si la añades, una nota de entrega. Los utilizamos para registrar, confirmar y coordinar tu pedido.</p><p>Los datos se almacenan en nuestra base de pedidos. Si los servicios de gestión y notificación están configurados, el equipo puede recibir los datos a través de esas herramientas para atenderte.</p><p>Si el píxel de Meta está configurado, se registran eventos de navegación y solicitud de pedido. No se envían a ese píxel los campos de tu formulario desde esta página.</p><p>Puedes solicitar la consulta, corrección o eliminación de tus datos contactándonos por WhatsApp.</p></> : <><p>Despachamos pedidos Express en Margarita en aprox. 1 hora (horario laboral) y coordinamos envíos nacionales por agencias Zoom y MRW en 5 días hábiles.</p><p>El combo de una bolsita cuesta $12 con flete cobro a destino. Los packs de tres ($24) y cinco ($36) incluyen envío 100% gratis a toda Venezuela.</p><p>Pagas de forma segura vía Pago Móvil Mercantil o en Binance USDT con un 15% de descuento especial. Todos los pedidos salen en sobre o caja exterior neutra, sellada y totalmente ciega.</p></>}<a className="text-button" href={SUPPORT} target="_blank" rel="noreferrer">Hablar con nosotros <Icon name="arrow" /></a></div>
+      </dialog>
+
+      {/* --- POPUP MODAL PROMO 3x2 (RESUMIDO Y COMPACTO) --- */}
+      <dialog
+        ref={promoRef}
+        className="promo-dialog"
+        aria-labelledby="promo-title"
+        onClose={closePromo}
+        onCancel={(event) => { event.preventDefault(); closePromo(); }}
+        onClick={(event) => { if (event.target === event.currentTarget) closePromo(); }}
+      >
+        <div className="promo-content">
+          <button className="promo-close-btn" onClick={closePromo} aria-label="Cerrar">
+            <Icon name="close" />
+          </button>
+
+          <span className="promo-eyebrow">CORTESÍA DE BIENVENIDA</span>
+
+          <h2 id="promo-title">
+            Lleva 2 bolsitas y la <em>3ra va de regalo.</em>
+          </h2>
+
+          <p className="promo-subtitle">
+            3 bolsitas por <b>$24</b> (ahorras $12) con <b>Envío 100% Gratis</b>.
+          </p>
+
+          <form onSubmit={handlePromoSubmit} className="promo-form">
+            <div className="promo-input-group">
+              <input
+                id="promo-phone"
+                type="tel"
+                required
+                minLength={7}
+                maxLength={32}
+                autoFocus
+                placeholder="Tu WhatsApp (ej. 0412 1234567)"
+                value={promoPhone}
+                onChange={(e) => setPromoPhone(e.target.value)}
+              />
+            </div>
+            {promoError && <p className="promo-error-msg">{promoError}</p>}
+            <button type="submit" className="promo-submit-btn" disabled={loading}>
+              <span>{loading ? "Reservando..." : "Reclamar 3x2 ($24) · Envío Gratis"}</span>
+              <Icon name="arrow" />
+            </button>
+            <p className="promo-reassurance">
+              Te llamamos para confirmar · No pagas nada ahora
+            </p>
+            <button type="button" className="promo-dismiss-btn" onClick={closePromo}>
+              Ver la tienda
+            </button>
+          </form>
+        </div>
       </dialog>
     </>
   );
