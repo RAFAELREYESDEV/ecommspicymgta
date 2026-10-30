@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
   const location = cleanText(payload.location, 160) || state;
   const address = cleanText(payload.address, 600) || "Coordinar entrega por WhatsApp";
   const deliveryNotes = cleanText(payload.deliveryNotes, 500);
-  const paymentMethod = cleanText(payload.paymentMethod, 80) || "COD (Pago al recibir)";
+  const paymentMethod = cleanText(payload.paymentMethod, 80) || "Coordinar por WhatsApp (Pago Móvil / Binance)";
   const paymentReference = cleanText(payload.paymentReference, 120);
   const selectedBundle = getBundle(payload.bundle);
 

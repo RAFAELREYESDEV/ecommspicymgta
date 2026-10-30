@@ -5,12 +5,12 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Spicy Cubbes Venezuela — Un poquito dulce. Un poquito spicy.",
-  description: "Gomitas de durazno con un toque de ají, hechas para compartir. 1 bolsita, 2 cubos, 1 cita. Envíos discretos y pago al recibir en Venezuela.",
+  description: "Gomitas de durazno con un toque de ají, hechas para compartir. 1 bolsita, 2 cubos, 1 cita. Envíos discretos en sobre 100% ciego a toda Venezuela.",
   applicationName: "Spicy Cubbes Venezuela",
   robots: { index: true, follow: true },
   openGraph: {
     title: "Spicy Cubbes — Un par. Un plan.",
-    description: "Dos cubitos para compartir. Envío discreto y pago al recibir en Venezuela.",
+    description: "Dos cubitos para compartir. Envíos discretos y atención directa por WhatsApp en toda Venezuela.",
     locale: "es_VE",
     type: "website",
   },

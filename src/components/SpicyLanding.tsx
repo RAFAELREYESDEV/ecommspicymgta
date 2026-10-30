@@ -498,7 +498,7 @@ export default function SpicyLanding() {
               href={`${SUPPORT}?text=${encodeURIComponent(
                 showExpressPay
                   ? `Hola! Acabo de registrar mi pedido #${receipt.id} en la web con Pago Express. Combo: ${bagLabel(receiptBundle?.quantity ?? 3)} (${money(receipt.total)}). Nombre: ${form.fullName}. ${form.paymentReference ? `Referencia: ${form.paymentReference}. ` : ""}Adjunto mi comprobante para despachar.`
-                  : `Hola! Acabo de registrar mi pedido #${receipt.id} en la web. Combo: ${bagLabel(receiptBundle?.quantity ?? 3)} (${money(receipt.total)}). Nombre: ${form.fullName}. Por favor indíquenme cómo coordinar la entrega.`
+                  : `Hola! Acabo de registrar mi pedido #${receipt.id} en la web. Combo: ${bagLabel(receiptBundle?.quantity ?? 3)} (${money(receipt.total)}). Nombre: ${form.fullName}. Por favor indíquenme cómo coordinar el despacho y pago.`
               )}`}
               target="_blank"
               rel="noreferrer"
