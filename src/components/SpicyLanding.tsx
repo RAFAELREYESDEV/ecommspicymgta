@@ -98,7 +98,7 @@ function generateEventId(): string {
 function track(event: string, parameters?: Record<string, unknown>): string {
   const eventId = generateEventId();
   if (typeof window !== "undefined" && typeof window.fbq === "function") {
-    window.fbq("track", event, { ...parameters, eventID: eventId }, { eventID: eventId });
+    window.fbq("track", event, parameters || {}, { eventID: eventId });
   }
   return eventId;
 }
@@ -175,7 +175,13 @@ export default function SpicyLanding() {
     if (!target) return;
     const observer = new IntersectionObserver(([entry]) => {
       if (entry.isIntersecting) {
-        track("ViewContent", { content_name: "Spicy Cubes · 1 par", content_type: "product" });
+        track("ViewContent", {
+          content_name: "Spicy Cubbes · 1 par",
+          content_type: "product",
+          content_ids: ["popular"],
+          value: 24,
+          currency: "USD",
+        });
         observer.disconnect();
       }
     }, { threshold: 0.15 });
@@ -222,7 +228,14 @@ export default function SpicyLanding() {
   function beginCheckout() {
     if (!checkoutTracked.current) {
       checkoutTracked.current = true;
-      track("InitiateCheckout", { content_name: selected.name, value: total, currency: "USD" });
+      track("InitiateCheckout", {
+        content_name: selected.name,
+        content_ids: [selected.id],
+        content_type: "product",
+        num_items: selected.quantity,
+        value: total,
+        currency: "USD",
+      });
     }
   }
 
@@ -278,11 +291,21 @@ export default function SpicyLanding() {
       const data = await response.json() as { ok?: boolean; orderId?: number };
       if (response.ok && data.ok && data.orderId) {
         setReceipt({ id: data.orderId, bundle: "popular", total: 24, isExpress: false, phone });
-        track("Purchase", { content_name: "Lleva 2 y la 3ra GRATIS · 3 bolsitas (3 citas)", value: 24, currency: "USD", num_items: 3, content_ids: ["popular"], content_type: "product" });
+        track("Purchase", {
+          content_name: "Lleva 2 y la 3ra GRATIS · 3 bolsitas (3 citas)",
+          value: 24,
+          currency: "USD",
+          num_items: 3,
+          content_ids: ["popular"],
+          content_type: "product",
+        });
         setHasOrder(true);
         setCheckoutOpen(true);
-        const waMsg = `Hola! Acabo de registrar la PROMO FLASH 3x2 en la web (Pedido #${data.orderId}). Combo 3 bolsitas por $24 con Envío Gratis. Nombre: ${name}. Quedo atento a su llamada o mensaje para confirmar.`;
-        window.open(`${SUPPORT}?text=${encodeURIComponent(waMsg)}`, "_blank");
+        const waMsg = `¡Hola! Acabo de pedir la Promo 3x2 de Spicy Cubbes en la web ($24 con Envío Gratis). Mi pedido es #${data.orderId}. ¿Cuándo me llega?`;
+        const waUrl = `${SUPPORT}?text=${encodeURIComponent(waMsg)}`;
+        setTimeout(() => {
+          window.location.href = waUrl;
+        }, 250);
       } else {
         openCheckout();
       }
@@ -325,11 +348,13 @@ export default function SpicyLanding() {
       track("Purchase", { content_name: selected.name, value: total, currency: "USD", num_items: selected.quantity, content_ids: [bundleId], content_type: "product" });
 
       const waMsg = showExpressPay
-        ? `Hola! Acabo de registrar mi pedido #${data.orderId} en la web con Pago Express. Combo: ${bagLabel(selected.quantity)} (${money(total)}). Nombre: ${form.fullName}. ${form.paymentReference ? `Referencia: ${form.paymentReference}. ` : ""}Adjunto comprobante para despachar.`
-        : `Hola! Acabo de registrar mi pedido #${data.orderId} en la web. Combo: ${bagLabel(selected.quantity)} (${money(total)}). Nombre: ${form.fullName}. Quedo atento a su llamada o mensaje para confirmar.`;
+        ? `¡Hola! Acabo de pedir mi combo de Spicy Cubbes en la web con Pago Express (Pedido #${data.orderId}). Combo: ${bagLabel(selected.quantity)} (${money(total)}). Nombre: ${form.fullName}. ${form.paymentReference ? `Ref: ${form.paymentReference}. ` : ""}Adjunto el comprobante.`
+        : `¡Hola! Acabo de hacer mi pedido #${data.orderId} de Spicy Cubbes en la web. Combo: ${bagLabel(selected.quantity)} (${money(total)}). Nombre: ${form.fullName}. ¿Cuándo me llega?`;
       const waUrl = `${SUPPORT}?text=${encodeURIComponent(waMsg)}`;
       if (typeof window !== "undefined") {
-        window.open(waUrl, "_blank");
+        setTimeout(() => {
+          window.location.href = waUrl;
+        }, 250);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Ocurrió un error. Intenta de nuevo.");
@@ -354,7 +379,7 @@ export default function SpicyLanding() {
             <a href="#el-ritual">El ritual</a>
             <a href="#preguntas">Preguntas</a>
           </nav>
-          <a href="#" className="brand-link" aria-label="Spicy Cubes — Inicio"><Wordmark /></a>
+          <a href="#" className="brand-link" aria-label="Spicy Cubbes — Inicio"><Wordmark /></a>
           <div className="header-actions">
             <span className="market-label">Venezuela · USD</span>
             <a href={SUPPORT} target="_blank" rel="noreferrer" className="support-link" aria-label="Hablemos por WhatsApp"><Icon name="message" /><span>Hablemos</span></a>
@@ -539,7 +564,7 @@ export default function SpicyLanding() {
         <div className="page-width">
           <div className="footer-top"><div><span className="eyebrow">NOS GUSTA HABLAR CONTIGO</span><a className="footer-contact" href={SUPPORT} target="_blank" rel="noreferrer">¿Hablamos? <Icon name="arrow" /></a><span className="footer-phone">+58 422 720 1945</span></div><div className="footer-links"><a href={CHANNEL} target="_blank" rel="noreferrer">Nuestro canal de WhatsApp <Icon name="arrow" /></a><button onClick={() => setPolicy("shipping")}>Entregas y pagos</button><button onClick={() => setPolicy("privacy")}>Privacidad</button></div><div className="footer-signoff"><Icon name="heart" /><span>Un par.<br /><em>Un plan.</em></span></div></div>
           <div className="footer-wordmark"><Wordmark large /></div>
-          <div className="footer-bottom"><p>© {new Date().getFullYear()} Spicy Cubes Venezuela.</p><span>Solo para mayores de 18 años. Disfruta con responsabilidad.</span><span>Hecho para compartir, no para la rutina.</span></div>
+          <div className="footer-bottom"><p>© {new Date().getFullYear()} Spicy Cubbes Venezuela.</p><span>Solo para mayores de 18 años. Disfruta con responsabilidad.</span><span>Hecho para compartir, no para la rutina.</span></div>
         </div>
       </footer>
 
@@ -676,7 +701,7 @@ export default function SpicyLanding() {
         </div>
       </dialog>
 
-      <dialog ref={zoomRef} className="zoom-dialog" aria-label="Galería ampliada de Spicy Cubes" onClose={() => setZoomOpen(false)} onCancel={(event) => { event.preventDefault(); setZoomOpen(false); }} onKeyDown={(event) => { if (event.key === "ArrowRight") changePhoto(1); if (event.key === "ArrowLeft") changePhoto(-1); }}>
+      <dialog ref={zoomRef} className="zoom-dialog" aria-label="Galería ampliada de Spicy Cubbes" onClose={() => setZoomOpen(false)} onCancel={(event) => { event.preventDefault(); setZoomOpen(false); }} onKeyDown={(event) => { if (event.key === "ArrowRight") changePhoto(1); if (event.key === "ArrowLeft") changePhoto(-1); }}>
         <div className="zoom-inner"><button className="icon-button zoom-close" onClick={() => setZoomOpen(false)} aria-label="Cerrar galería"><Icon name="close" /></button><div className="zoom-image"><Image src={photo.src} alt={photo.alt} fill sizes="(max-width: 780px) 92vw, 850px" quality={75} /></div><div className="zoom-controls"><button className="icon-button" onClick={() => changePhoto(-1)} aria-label="Fotografía anterior"><Icon name="arrow" className="rotate-arrow" /></button><span>{photo.label} · {photoIndex + 1} / {photos.length}</span><button className="icon-button" onClick={() => changePhoto(1)} aria-label="Fotografía siguiente"><Icon name="arrow" /></button></div></div>
       </dialog>
 
