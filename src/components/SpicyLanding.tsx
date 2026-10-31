@@ -88,10 +88,19 @@ function Wordmark({ large = false }: { large?: boolean }) {
   );
 }
 
-function track(event: string, parameters?: Record<string, unknown>) {
-  if (typeof window !== "undefined" && typeof window.fbq === "function") {
-    window.fbq("track", event, parameters);
+function generateEventId(): string {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID();
   }
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+}
+
+function track(event: string, parameters?: Record<string, unknown>): string {
+  const eventId = generateEventId();
+  if (typeof window !== "undefined" && typeof window.fbq === "function") {
+    window.fbq("track", event, { ...parameters, eventID: eventId }, { eventID: eventId });
+  }
+  return eventId;
 }
 
 function scrollToId(id: string) {
@@ -269,8 +278,7 @@ export default function SpicyLanding() {
       const data = await response.json() as { ok?: boolean; orderId?: number };
       if (response.ok && data.ok && data.orderId) {
         setReceipt({ id: data.orderId, bundle: "popular", total: 24, isExpress: false, phone });
-        track("Purchase", { content_name: "Lleva 2 y la 3ra GRATIS · 3 bolsitas (3 citas)", value: 24, currency: "USD", num_items: 3 });
-        track("Lead", { content_name: "Promo Flash 3x2", value: 24, currency: "USD" });
+        track("Purchase", { content_name: "Lleva 2 y la 3ra GRATIS · 3 bolsitas (3 citas)", value: 24, currency: "USD", num_items: 3, content_ids: ["popular"], content_type: "product" });
         setHasOrder(true);
         setCheckoutOpen(true);
         const waMsg = `Hola! Acabo de registrar la PROMO FLASH 3x2 en la web (Pedido #${data.orderId}). Combo 3 bolsitas por $24 con Envío Gratis. Nombre: ${name}. Quedo atento a su llamada o mensaje para confirmar.`;
@@ -314,8 +322,7 @@ export default function SpicyLanding() {
       const data = await response.json() as { ok?: boolean; orderId?: number; isExpress?: boolean; error?: string };
       if (!response.ok || !data.ok || !data.orderId) throw new Error(data.error || "No pudimos registrar tu pedido.");
       setReceipt({ id: data.orderId, bundle: bundleId, total, isExpress: !!data.isExpress, phone: form.phone });
-      track("Purchase", { content_name: selected.name, value: total, currency: "USD", num_items: selected.quantity });
-      track("Lead", { content_name: selected.name, value: total, currency: "USD" });
+      track("Purchase", { content_name: selected.name, value: total, currency: "USD", num_items: selected.quantity, content_ids: [bundleId], content_type: "product" });
 
       const waMsg = showExpressPay
         ? `Hola! Acabo de registrar mi pedido #${data.orderId} en la web con Pago Express. Combo: ${bagLabel(selected.quantity)} (${money(total)}). Nombre: ${form.fullName}. ${form.paymentReference ? `Referencia: ${form.paymentReference}. ` : ""}Adjunto comprobante para despachar.`
